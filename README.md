@@ -157,3 +157,28 @@ You can use the built Docker image in a Kubernetes Deployment. Ensure you config
 -   **Port**: 8888
 -   **Liveness/Readiness Probes**: Use the `/health` endpoint.
 -   **Resources**: Allocate sufficient CPU/RAM depending on traffic (the model is loaded into memory).
+
+## CI/CD Pipeline
+
+## CI/CD Pipeline
+
+This repository uses a sophisticated GitHub Actions workflow (`.github/workflows/deploy.yml`) that deploys to AWS ECS on pushes to `main`.
+
+### Key Features
+- **OIDC Authentication**: Uses AWS IAM OIDC Identity Provider for secure, keyless authentication.
+- **Versioning**: Uses date-based tagging (`YYYY.MM.DD.github.RUN_NUMBER.prod`).
+
+### Configuration
+
+To enable the deployment pipeline, you need to configure the following in your GitHub Repository Secrets:
+
+#### AWS
+- `AWS_ROLE_ARN`: The ARN of the IAM Role that GitHub Actions will assume.
+- `ECR_REPOSITORY_URI`: The full URI of your ECR repository (e.g., `123456789012.dkr.ecr.ap-south-1.amazonaws.com`).
+- `AWS_REGION`: (Optional if different from default `ap-south-1`).
+
+
+
+
+
+

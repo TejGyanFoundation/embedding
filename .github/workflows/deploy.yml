@@ -1,0 +1,57 @@
+name: Build and deploy production
+
+permissions:
+  id-token: write
+  contents: read
+
+on:
+  push:
+    branches: [ "main" ]
+
+env:
+  AWS_REGION: ap-south-1
+  # Replace with your ECR Repository URI
+  ECR_REPOSITORY_URI: 953479345111.dkr.ecr.ap-south-1.amazonaws.com/embedding
+  ECR_REPOSITORY_NAME: embedding-service
+  CONTAINER_NAME: embedding-service
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - name: AWS CLI
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        role-to-assume: arn:aws:iam::953479345111:role/github-actions
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+
+    - name: Build, tag, and push image to Amazon ECR
+      id: build-image
+      run: |
+        DATE=$(date +%Y.%m.%d)
+        RUN_NUMBER=${{ github.run_number }}
+        IMAGE_TAG="$DATE.github.$RUN_NUMBER.prod"
+        echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_OUTPUT
+        
+        # Use the registry from the login step or the secret
+        ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
+        
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_NAME:$IMAGE_TAG .
+        docker tag $ECR_REGISTRY/$ECR_REPOSITORY_NAME:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY_NAME:latest
+        
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY_NAME:$IMAGE_TAG
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY_NAME:latest
+        
+        echo "image=$ECR_REGISTRY/$ECR_REPOSITORY_NAME:$IMAGE_TAG" >> $GITHUB_OUTPUT
