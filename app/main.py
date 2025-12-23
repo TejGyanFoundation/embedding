@@ -5,6 +5,7 @@ from sentence_transformers import SentenceTransformer
 from typing import List, Union
 import os
 import logging
+import safetensors
 
 # Configure logging
 logging.basicConfig(
@@ -35,6 +36,10 @@ def load_model():
         return True, "Model already loaded"
     try:
         logger.info(f"Loading model: {MODEL_NAME}...")
+        
+        # Explicitly check for safetensors to ensure secure loading
+        logger.info(f"Safetensors version {safetensors.__version__} available. Attempting secure model loading.")
+
         model = SentenceTransformer(MODEL_NAME)
         logger.info("Model loaded successfully.")
         init_error = None

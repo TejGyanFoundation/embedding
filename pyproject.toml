@@ -16,6 +16,7 @@ fastapi = "^0.109.0"
 uvicorn = "^0.27.0"
 sentence-transformers = "^2.2.2"
 torch = {version = "^2.2.0", source = "pytorch"}
+safetensors = "^0.4.1"
 gunicorn = "^21.2.0"
 
 [build-system]
