@@ -27,35 +27,52 @@ app.add_middleware(
 # Load model globally
 MODEL_NAME = "l3cube-pune/indic-sentence-similarity-sbert"
 model = None
+init_error = None
 
-@app.on_event("startup")
-async def startup_event():
-    global model
+def load_model():
+    global model, init_error
+    if model is not None:
+        return True, "Model already loaded"
     try:
         logger.info(f"Loading model: {MODEL_NAME}...")
         model = SentenceTransformer(MODEL_NAME)
         logger.info("Model loaded successfully.")
+        init_error = None
+        return True, "Model loaded successfully"
     except Exception as e:
         logger.error(f"Error loading model {MODEL_NAME}: {e}")
-        # Not raising here to let valid health checks pass if needed, or fail gracefully
-        pass
+        init_error = str(e)
+        return False, str(e)
+
+@app.on_event("startup")
+async def startup_event():
+    load_model()
 
 class EmbeddingRequest(BaseModel):
     text: Union[str, List[str]]
 
+
 class EmbeddingResponse(BaseModel):
     embeddings: List[List[float]]
+
+@app.post("/init-model")
+def initialize_model():
+    success, message = load_model()
+    if success:
+        return {"status": "ok", "message": message}
+    else:
+        raise HTTPException(status_code=500, detail=f"Failed to load model: {message}")
 
 @app.get("/health")
 def health_check():
     if model is None:
-         return {"status": "error", "message": "Model not loaded"}
+         return {"status": "error", "message": "Model not loaded", "error": init_error}
     return {"status": "ok", "model": MODEL_NAME}
 
 @app.post("/embed", response_model=EmbeddingResponse)
 def get_embeddings(request: EmbeddingRequest):
     if model is None:
-        raise HTTPException(status_code=503, detail="Model not initialized")
+        raise HTTPException(status_code=503, detail=f"Model not initialized. Error: {init_error}")
     
     sentences = request.text
     if isinstance(sentences, str):
