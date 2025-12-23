@@ -10,7 +10,7 @@ WORKDIR /app
 # Install poetry
 RUN pip install --no-cache-dir poetry
 
-COPY pyproject.toml .
+COPY pyproject.toml poetry.lock ./
 
 # Configure poetry to create venv in project and install dependencies
 RUN poetry config virtualenvs.in-project true \
