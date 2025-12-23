@@ -5,14 +5,8 @@ services:
       - "8888:8888"
     volumes:
       - model_cache:/app/model_cache
+
     restart: unless-stopped
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
 
 volumes:
   model_cache:
