@@ -58,7 +58,17 @@ To build the image and start the container:
 
 ```bash
 docker-compose up --build
+```bash
+docker-compose up --build
 ```
+
+### GPU Support
+
+To run this service with GPU acceleration, you must have:
+1.  **NVIDIA GPU** on your host machine.
+2.  **NVIDIA Container Toolkit** installed and configured.
+
+The `docker-compose.yml` is already configured to request all available GPUs. If you are running on a CPU-only machine, Docker Compose will usually ignore the GPU reservation request (or you might need to comment out the `deploy` section in `docker-compose.yml` if you face errors).
 
 The service will be accessible at `http://localhost:8888`.
 
