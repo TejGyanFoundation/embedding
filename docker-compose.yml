@@ -1,0 +1,11 @@
+services:
+  embedding-service:
+    build: .
+    ports:
+      - "8888:8888"
+    volumes:
+      - model_cache:/app/model_cache
+    restart: unless-stopped
+
+volumes:
+  model_cache:
