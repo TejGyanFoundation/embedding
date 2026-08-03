@@ -42,6 +42,10 @@ class ProcessDocumentRequest(BaseModel):
     document_id: str
     callback_url: str
     document_type: Optional[str] = None
+    # Per-job secret issued by the submitting backend; echoed back on the
+    # callback as X-Callback-Token so the callback endpoint can verify the
+    # result really comes from this job.
+    callback_token: Optional[str] = None
 
 
 class ProcessDocumentResponse(BaseModel):
@@ -72,6 +76,7 @@ def process_document_url(
         request.document_id,
         request.callback_url,
         identifier,
+        request.callback_token,
     )
     logger.info(
         "Accepted PDF import job identifier=%s document_id=%s",
@@ -82,7 +87,11 @@ def process_document_url(
 
 
 def process_and_callback(
-    pdf_url: str, document_id: str, callback_url: str, identifier: str
+    pdf_url: str,
+    document_id: str,
+    callback_url: str,
+    identifier: str,
+    callback_token: Optional[str] = None,
 ) -> None:
     """Worker: download -> convert -> derive hierarchy -> POST callback."""
     try:
@@ -99,12 +108,21 @@ def process_and_callback(
             "error": {"message": str(exc)},
         }
 
+    # The token authenticates this job to the callback endpoint; sent as a
+    # header (not in the URL) so it stays out of access logs.
+    headers = {}
+    if callback_token:
+        headers["X-Callback-Token"] = callback_token
+
     # The receiving backend may hit transient contention (e.g. deadlocks when
     # several imports land at once) — retry 5xx and connection errors.
     for attempt in range(1, CALLBACK_ATTEMPTS + 1):
         try:
             response = requests.post(
-                callback_url, json=payload, timeout=CALLBACK_TIMEOUT_SECONDS
+                callback_url,
+                json=payload,
+                timeout=CALLBACK_TIMEOUT_SECONDS,
+                headers=headers,
             )
             response.raise_for_status()
             logger.info(
