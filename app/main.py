@@ -5,6 +5,13 @@ from sentence_transformers import SentenceTransformer
 from typing import List, Union
 import os
 import logging
+import threading
+
+# Serialize model.encode calls: concurrent encodes multiply peak memory
+# (each holds activation tensors for its whole batch) and under memory
+# pressure the process balloons and thrashes swap until nothing completes.
+# One encode at a time keeps the footprint flat; queued requests just wait.
+_encode_lock = threading.Lock()
 
 # Configure logging
 logging.basicConfig(
@@ -84,7 +91,8 @@ def get_embeddings(request: EmbeddingRequest):
         sentences = [sentences]
     
     try:
-        embeddings = model.encode(sentences)
+        with _encode_lock:
+            embeddings = model.encode(sentences)
         return EmbeddingResponse(embeddings=embeddings.tolist())
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -153,14 +161,18 @@ def similar_terms(request: SimilarTermsRequest):
 
     to_embed = [w for w in unique_words if w.casefold() not in _word_vector_cache]
     if to_embed:
-        vectors = model.encode(to_embed, show_progress_bar=False)
+        with _encode_lock:
+            vectors = model.encode(to_embed, show_progress_bar=False)
         for word, vector in zip(to_embed, vectors):
             if len(_word_vector_cache) < _WORD_CACHE_MAX:
                 _word_vector_cache[word.casefold()] = np.asarray(
                     vector, dtype=np.float32
                 )
 
-    query_vector = np.asarray(model.encode([request.query])[0], dtype=np.float32)
+    with _encode_lock:
+        query_vector = np.asarray(
+            model.encode([request.query])[0], dtype=np.float32
+        )
     query_norm = query_vector / (np.linalg.norm(query_vector) + 1e-9)
 
     def score(word: str) -> float:
