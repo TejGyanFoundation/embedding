@@ -12,12 +12,23 @@ RUN pip install --no-cache-dir poetry
 
 COPY pyproject.toml poetry.lock ./
 
+# shrulipi-to-unicode is a PRIVATE sibling repo referenced by pyproject.toml
+# as an editable path dependency (../shrulipi-to-unicode). Vendor its source
+# into the build context before building:
+#   rsync -a --exclude .git ../shrulipi-to-unicode ./
+# It lands at /shrulipi-to-unicode so the relative path resolves from /app.
+COPY shrulipi-to-unicode /shrulipi-to-unicode
+
 # Configure poetry to create venv in project and install dependencies
 RUN poetry config virtualenvs.in-project true \
     && poetry install --no-root --no-interaction --no-ansi
 
 # Final stage
 FROM python:3.13-slim
+
+# curl is required by the container HEALTHCHECK
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
@@ -26,6 +37,10 @@ WORKDIR /app
 
 # Copy virtual environment from builder
 COPY --from=builder /app/.venv /app/.venv
+
+# The editable install's .pth points at /shrulipi-to-unicode — keep it in
+# the runtime image at the same path.
+COPY --from=builder /shrulipi-to-unicode /shrulipi-to-unicode
 
 # Add venv to PATH
 ENV PATH="/app/.venv/bin:$PATH"

@@ -205,3 +205,6 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Vendored converter source for docker builds (private sibling repo)
+shrulipi-to-unicode/
