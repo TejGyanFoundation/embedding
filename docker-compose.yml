@@ -4,6 +4,10 @@ services:
     dns:
       - 8.8.8.8
       - 1.1.1.1
+    environment:
+      # When set (via an untracked .env next to this file), /process-document-url
+      # requires "Authorization: Bearer <key>"; empty leaves the endpoint open.
+      - PDF_IMPORT_API_KEY=${PDF_IMPORT_API_KEY:-}
     ports:
       - "8888:8888"
     volumes:
